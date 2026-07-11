@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Stack-a-Mon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <main class="game" id="game">
+    <header class="game-header">
+      <h1 class="brand">Stack-a-Mon</h1>
+      <div class="hud">
+        <div class="timer-wrap">
+          <div class="timer" id="timer" aria-live="polite">
+            <span class="timer-label">Time</span>
+            <span class="timer-value" id="timer-value">60.0</span>
+          </div>
+        </div>
+        <div class="skips" id="skips" aria-label="Skips remaining">
+          <span class="skips-label">Skips</span>
+          <span class="skips-value" id="skips-value">3</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="ladder-wrap" aria-label="Pokémon ladder">
+      <span class="ladder-hint ladder-hint--high" aria-hidden="true">High</span>
+      <div class="ladder" id="ladder"></div>
+      <span class="ladder-hint ladder-hint--low" aria-hidden="true">Low</span>
+    </section>
+
+    <section class="draw-area" id="draw-area" aria-label="Current Pokémon">
+      <div class="draw-card card card--face-down" id="current-card">
+        <span class="card-name" id="card-name">?</span>
+      </div>
+      <p class="phase-label" id="phase-label">Ready</p>
+    </section>
+
+    <section class="controls" id="controls">
+      <div class="controls-row" id="pre-game-controls">
+        <button type="button" class="btn btn--primary" id="start-btn">Start Game</button>
+        <button type="button" class="btn btn--secondary" id="help-btn">How to Play</button>
+      </div>
+      <div class="controls-row" id="play-controls" hidden>
+        <button type="button" class="btn btn--secondary" id="skip-btn">Skip</button>
+      </div>
+      <div class="controls-row" id="rearrange-controls" hidden>
+        <button type="button" class="btn btn--primary" id="lock-btn">Lock In</button>
+      </div>
+      <div class="controls-row" id="post-game-controls" hidden>
+        <button type="button" class="btn btn--secondary" id="view-summary-btn">Summary</button>
+        <button type="button" class="btn btn--primary" id="new-game-btn">New Game</button>
+      </div>
+    </section>
+
+    <p class="final-score" id="final-score" hidden></p>
+    <p class="status" id="status" aria-live="polite"></p>
+    <p class="build-version" id="build-version"></p>
+  </main>
+
+  <div class="phase-banner" id="phase-banner" hidden aria-live="polite">
+    <p class="phase-banner-title" id="phase-banner-title"></p>
+    <p class="phase-banner-sub" id="phase-banner-sub"></p>
+  </div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="overlay-panel" role="dialog" aria-labelledby="overlay-title">
+      <h2 class="overlay-title" id="overlay-title">Results</h2>
+      <p class="overlay-score" id="overlay-score"></p>
+      <p class="overlay-detail" id="overlay-detail"></p>
+      <ul class="score-breakdown" id="score-breakdown"></ul>
+      <button type="button" class="btn btn--primary" id="close-btn">Close</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="help-overlay" hidden>
+    <div class="overlay-panel overlay-panel--help" role="dialog" aria-labelledby="help-title">
+      <h2 class="overlay-title" id="help-title">How to Play</h2>
+      <div class="help-rules">
+        <p>Stack <strong>10 Pokémon</strong> on the ladder by National Pokédex number — <strong>lowest at the bottom, highest at the top</strong>.</p>
+        <p>You have <strong>60 seconds</strong> and <strong>3 skips</strong>. Tap a slot to place the current Pokémon, or skip for a new one. No repeats. When you’re out of skips, you must place the Pokémon shown.</p>
+        <p>Once all 10 slots are filled, the timer resets to <strong>15 seconds</strong> so you can rearrange. Tap one Pokémon, then another to swap. Lock in when ready — or the ladder locks automatically when time runs out.</p>
+        <p><strong>Scoring:</strong> Each Pokémon in the correct slot scores <strong>100 + its Pokédex number</strong>. Get all 10 right and your score is <strong>doubled</strong>.</p>
+        <p><strong>Shinies:</strong> Each placed Pokémon has a <strong>1/4096</strong> chance to be shiny (revealed at the end). A shiny is worth <strong>+100</strong>, and a shiny in the correct slot has its slot points <strong>doubled</strong>.</p>
+      </div>
+      <button type="button" class="btn btn--primary" id="help-close-btn">Got it</button>
+    </div>
+  </div>
+
+  <script src="js/version.js"></script>
+  <script src="js/pokemon.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
