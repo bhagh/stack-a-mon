@@ -224,6 +224,30 @@ button,
   gap: 0.45rem;
 }
 
+.slot-row {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) 1.6rem;
+  align-items: center;
+  column-gap: 0.25rem;
+  width: 100%;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.slot,
+.slot-index,
+.slot-dex {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.slot-row:not(.slot-row--rearrange) {
+  grid-template-columns: 0 minmax(0, 1fr) 0;
+  column-gap: 0;
+}
+
 .slot {
   position: relative;
   width: 100%;
@@ -269,14 +293,62 @@ button,
   cursor: pointer;
 }
 
+.slot--disabled {
+  pointer-events: none;
+}
+
 .slot--draggable {
   cursor: grab;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.slot--draggable,
+.slot--draggable * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .slot--interactive:focus-visible {
   outline: 2px solid var(--ink-soft);
   outline-offset: 2px;
+}
+
+.slot-shift {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: rgba(255, 253, 248, 0.95);
+  color: var(--ink);
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  flex-shrink: 0;
+  justify-self: center;
+}
+
+.slot-shift:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: var(--card);
+}
+
+.slot-shift:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.slot-shift[hidden] {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .slot--filled {
@@ -400,6 +472,9 @@ button,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .slot-dex {
@@ -1188,6 +1263,22 @@ button,
     padding: 0 3rem;
     gap: 0;
     justify-content: center;
+  }
+
+  .slot-row {
+    grid-template-columns: 1.85rem minmax(0, 1fr) 1.85rem;
+    column-gap: 0.35rem;
+  }
+
+  .slot-row:not(.slot-row--rearrange) {
+    grid-template-columns: 0 minmax(0, 1fr) 0;
+    column-gap: 0;
+  }
+
+  .slot-shift {
+    width: 1.7rem;
+    height: 1.7rem;
+    font-size: 0.65rem;
   }
 
   .slot-name {

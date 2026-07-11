@@ -53,7 +53,7 @@
 
   const allPokemon = Array.isArray(window.POKEMON) ? window.POKEMON : [];
 
-  /** @type {{ pokemon: { id: number, name: string, slug: string } | null, shiny: boolean, spriteRevealed: boolean, el: HTMLButtonElement, indexEl: HTMLElement, nameEl: HTMLElement, dexEl: HTMLElement, spriteEl: HTMLImageElement }[]} */
+  /** @type {{ pokemon: { id: number, name: string, slug: string } | null, shiny: boolean, spriteRevealed: boolean, el: HTMLElement, rowEl: HTMLElement, indexEl: HTMLElement, nameEl: HTMLElement, dexEl: HTMLElement, spriteEl: HTMLImageElement, upBtn: HTMLButtonElement, downBtn: HTMLButtonElement }[]} */
   let slots = [];
   /** @type {{ id: number, name: string, slug: string }[]} */
   let deck = [];
@@ -235,11 +235,19 @@
     slots = [];
 
     for (let i = 0; i < SLOT_COUNT; i += 1) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "slot";
-      btn.disabled = true;
-      btn.dataset.index = String(i);
+      const rowWrap = document.createElement("div");
+      rowWrap.className = "slot-row";
+
+      const downBtn = document.createElement("button");
+      downBtn.type = "button";
+      downBtn.className = "slot-shift slot-shift--down";
+      downBtn.setAttribute("aria-label", "Move down");
+      downBtn.hidden = true;
+      downBtn.textContent = "▼";
+
+      const row = document.createElement("div");
+      row.className = "slot";
+      row.dataset.index = String(i);
 
       const indexEl = document.createElement("span");
       indexEl.className = "slot-index";
@@ -260,23 +268,46 @@
       dexEl.className = "slot-dex";
       dexEl.setAttribute("aria-hidden", "true");
 
-      btn.append(indexEl, spriteEl, nameEl, dexEl);
-      btn.addEventListener("click", () => onSlotClick(i));
-      btn.addEventListener("pointerdown", (event) => onSlotPointerDown(i, event));
-      btn.addEventListener("pointermove", onSlotPointerMove);
-      btn.addEventListener("pointerup", onSlotPointerUp);
-      btn.addEventListener("pointercancel", onSlotPointerUp);
-      ladderEl.appendChild(btn);
+      const upBtn = document.createElement("button");
+      upBtn.type = "button";
+      upBtn.className = "slot-shift slot-shift--up";
+      upBtn.setAttribute("aria-label", "Move up");
+      upBtn.hidden = true;
+      upBtn.textContent = "▲";
+
+      upBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        shiftSlot(i, -1);
+      });
+      downBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        shiftSlot(i, 1);
+      });
+      upBtn.addEventListener("pointerdown", (event) => event.stopPropagation());
+      downBtn.addEventListener("pointerdown", (event) => event.stopPropagation());
+
+      row.append(indexEl, spriteEl, nameEl, dexEl);
+      row.addEventListener("click", () => onSlotClick(i));
+      row.addEventListener("pointerdown", (event) => onSlotPointerDown(i, event));
+      row.addEventListener("pointermove", onSlotPointerMove);
+      row.addEventListener("pointerup", onSlotPointerUp);
+      row.addEventListener("pointercancel", onSlotPointerUp);
+
+      rowWrap.append(downBtn, row, upBtn);
+      ladderEl.appendChild(rowWrap);
 
       slots.push({
         pokemon: null,
         shiny: false,
         spriteRevealed: false,
-        el: btn,
+        el: row,
+        rowEl: rowWrap,
         indexEl,
         nameEl,
         dexEl,
         spriteEl,
+        upBtn,
+        downBtn,
       });
       updateSlotAria(i);
     }
@@ -339,6 +370,27 @@
     }
 
     updateSlotAria(index);
+    updateShiftControls(index);
+  }
+
+  function updateShiftControls(index) {
+    const slot = slots[index];
+    if (!slot) return;
+    const show = phase === "rearrange" && Boolean(slot.pokemon);
+    slot.rowEl.classList.toggle("slot-row--rearrange", phase === "rearrange");
+    slot.upBtn.hidden = !show;
+    slot.downBtn.hidden = !show;
+    slot.upBtn.disabled = !show || index <= 0;
+    slot.downBtn.disabled = !show || index >= SLOT_COUNT - 1;
+  }
+
+  function shiftSlot(index, direction) {
+    if (phase !== "rearrange") return;
+    const to = index + direction;
+    if (to < 0 || to >= SLOT_COUNT) return;
+    if (!slots[index]?.pokemon) return;
+    movePokemon(index, to);
+    setStatus("Moved.", "good");
   }
 
   function placedCount() {
@@ -346,11 +398,13 @@
   }
 
   function setSlotsInteractive(interactive) {
-    slots.forEach((slot) => {
+    slots.forEach((slot, i) => {
       const canUse = interactive;
-      slot.el.disabled = !canUse;
       slot.el.classList.toggle("slot--interactive", canUse);
       slot.el.classList.toggle("slot--draggable", canUse && phase === "rearrange");
+      slot.el.classList.toggle("slot--disabled", !canUse);
+      slot.el.setAttribute("aria-disabled", canUse ? "false" : "true");
+      updateShiftControls(i);
     });
   }
 
@@ -440,6 +494,13 @@
     if (event.pointerType === "mouse" && event.button !== 0) return;
     const slot = slots[index];
     if (!slot?.pokemon) return;
+
+    // Prevent mobile text selection / callout while dragging ladder names.
+    if (event.pointerType !== "mouse") {
+      event.preventDefault();
+      const selection = window.getSelection?.();
+      if (selection && selection.removeAllRanges) selection.removeAllRanges();
+    }
 
     dragState = {
       from: index,
@@ -662,7 +723,7 @@
     updateTimerDisplay();
     setSlotsInteractive(true);
     showControlsForPhase();
-    setStatus("Drag to reorder, or tap two to swap.");
+    setStatus("Drag, tap two to swap, or use the arrows.");
     startTimer(() => lockIn());
   }
 
