@@ -243,6 +243,11 @@ button,
   cursor: pointer;
 }
 
+.slot--draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
 .slot--interactive:focus-visible {
   outline: 2px solid var(--ink-soft);
   outline-offset: 2px;
@@ -263,6 +268,38 @@ button,
     0 6px 16px rgba(154, 63, 18, 0.28);
   transform: scale(1.03);
   z-index: 2;
+}
+
+.slot--dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.slot--drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(196, 92, 38, 0.3);
+  transform: scale(1.02);
+  z-index: 2;
+}
+
+.drag-ghost {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  transform: translate(-50%, -120%);
+  padding: 0.45rem 0.8rem;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: 0 10px 24px rgba(28, 25, 21, 0.22);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  max-width: min(70vw, 14rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .slot--correct {
@@ -707,6 +744,9 @@ button,
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: baseline;
 }
 
 .score-breakdown .score-breakdown__correct .score-breakdown__value {
@@ -719,6 +759,16 @@ button,
 
 .score-breakdown .score-breakdown__wrong .score-breakdown__value {
   color: var(--bad);
+}
+
+.score-breakdown .score-breakdown__shiny {
+  color: var(--shiny);
+}
+
+.score-breakdown .score-breakdown__section {
+  margin-top: 0.25rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--line);
 }
 
 .score-breakdown .score-breakdown__total {

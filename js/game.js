@@ -9,10 +9,12 @@
   const SHINY_BANNER_MS = 2400;
   const REARRANGE_BANNER_MS = 2400;
   const POINTS_BASE = 100;
+  const POINTS_SHINY = 50;
   const SHINY_ODDS_DEFAULT = 4096;
   const SHINY_ODDS_DEBUG = 10;
-  const SHINY_BONUS = 100;
   const DEBUG_SKIP_CLICKS = 3;
+  const STREAK_BASE_PERCENT = 10;
+  const STREAK_STEP_PERCENT = 5;
 
   const ladderEl = document.getElementById("ladder");
   const timerEl = document.getElementById("timer");
@@ -69,6 +71,11 @@
   let helpPaused = false;
   let shinyOdds = SHINY_ODDS_DEFAULT;
   let skipDebugClicks = 0;
+  let placementTimeLeft = 0;
+  /** @type {null | { from: number, pointerId: number, startX: number, startY: number, active: boolean, over: number | null, ghost: HTMLElement | null }} */
+  let dragState = null;
+  let suppressNextSlotClick = false;
+  const DRAG_THRESHOLD_PX = 8;
 
   function shuffle(arr) {
     const a = [...arr];
@@ -235,6 +242,10 @@
 
       btn.append(indexEl, spriteEl, nameEl, dexEl);
       btn.addEventListener("click", () => onSlotClick(i));
+      btn.addEventListener("pointerdown", (event) => onSlotPointerDown(i, event));
+      btn.addEventListener("pointermove", onSlotPointerMove);
+      btn.addEventListener("pointerup", onSlotPointerUp);
+      btn.addEventListener("pointercancel", onSlotPointerUp);
       ladderEl.appendChild(btn);
 
       slots.push({
@@ -319,7 +330,149 @@
       const canUse = interactive;
       slot.el.disabled = !canUse;
       slot.el.classList.toggle("slot--interactive", canUse);
+      slot.el.classList.toggle("slot--draggable", canUse && phase === "rearrange");
     });
+  }
+
+  function clearDragVisuals() {
+    slots.forEach((slot) => {
+      slot.el.classList.remove("slot--dragging", "slot--drag-over");
+    });
+    if (dragState?.ghost) {
+      dragState.ghost.remove();
+      dragState.ghost = null;
+    }
+  }
+
+  function moveDragGhost(clientX, clientY) {
+    if (!dragState?.ghost) return;
+    dragState.ghost.style.left = `${clientX}px`;
+    dragState.ghost.style.top = `${clientY}px`;
+  }
+
+  function slotIndexFromPoint(clientX, clientY) {
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el) return null;
+    const btn = el.closest(".slot");
+    if (!btn) return null;
+    const idx = Number(btn.dataset.index);
+    return Number.isInteger(idx) ? idx : null;
+  }
+
+  function beginSlotDrag(event) {
+    if (!dragState) return;
+    const slot = slots[dragState.from];
+    if (!slot?.pokemon) return;
+
+    dragState.active = true;
+    suppressNextSlotClick = true;
+    selectedSlot = null;
+    slots.forEach((_, i) => renderSlot(i));
+
+    slot.el.classList.add("slot--dragging");
+
+    const ghost = document.createElement("div");
+    ghost.className = "drag-ghost";
+    ghost.textContent = slot.pokemon.name;
+    document.body.appendChild(ghost);
+    dragState.ghost = ghost;
+    moveDragGhost(event.clientX, event.clientY);
+    setStatus(`Moving ${slot.pokemon.name}…`);
+  }
+
+  function updateSlotDrag(event) {
+    if (!dragState?.active) return;
+    moveDragGhost(event.clientX, event.clientY);
+
+    const over = slotIndexFromPoint(event.clientX, event.clientY);
+    if (dragState.over !== null && dragState.over !== over) {
+      slots[dragState.over]?.el.classList.remove("slot--drag-over");
+    }
+
+    if (over !== null && over !== dragState.from) {
+      slots[over].el.classList.add("slot--drag-over");
+      dragState.over = over;
+    } else {
+      dragState.over = null;
+    }
+  }
+
+  function movePokemon(from, to) {
+    if (from === to) return;
+    const order = slots.map((s) => ({
+      pokemon: s.pokemon,
+      shiny: s.shiny,
+      spriteRevealed: s.spriteRevealed,
+    }));
+    const [moved] = order.splice(from, 1);
+    order.splice(to, 0, moved);
+    order.forEach((entry, i) => {
+      slots[i].pokemon = entry.pokemon;
+      slots[i].shiny = entry.shiny;
+      slots[i].spriteRevealed = entry.spriteRevealed;
+    });
+    selectedSlot = null;
+    slots.forEach((_, i) => renderSlot(i, { animate: true }));
+  }
+
+  function onSlotPointerDown(index, event) {
+    if (phase !== "rearrange") return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const slot = slots[index];
+    if (!slot?.pokemon) return;
+
+    dragState = {
+      from: index,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+      over: null,
+      ghost: null,
+    };
+    slot.el.setPointerCapture(event.pointerId);
+  }
+
+  function onSlotPointerMove(event) {
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    if (!dragState.active) {
+      const dist = Math.hypot(
+        event.clientX - dragState.startX,
+        event.clientY - dragState.startY
+      );
+      if (dist < DRAG_THRESHOLD_PX) return;
+      beginSlotDrag(event);
+    }
+
+    event.preventDefault();
+    updateSlotDrag(event);
+  }
+
+  function onSlotPointerUp(event) {
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const state = dragState;
+    const wasActive = state.active;
+    const from = state.from;
+    clearDragVisuals();
+    dragState = null;
+
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch (_) {
+      /* already released */
+    }
+
+    if (!wasActive) return;
+
+    const to = slotIndexFromPoint(event.clientX, event.clientY);
+    if (to !== null && to !== from) {
+      movePokemon(from, to);
+      setStatus("Moved.", "good");
+    } else {
+      setStatus("Drag onto another slot, or tap two to swap.");
+    }
   }
 
   function updateCurrentCard() {
@@ -369,6 +522,10 @@
       return;
     }
     if (phase === "rearrange") {
+      if (suppressNextSlotClick) {
+        suppressNextSlotClick = false;
+        return;
+      }
       rearrangeTap(index);
     }
   }
@@ -428,7 +585,7 @@
     if (selectedSlot === index) {
       selectedSlot = null;
       renderSlot(index);
-      setStatus("Tap a Pokémon, then another to swap.");
+      setStatus("Drag to reorder, or tap two to swap.");
       return;
     }
 
@@ -449,6 +606,7 @@
     phase = "rearrange-intro";
     selectedSlot = null;
     current = null;
+    placementTimeLeft = Math.max(0, secondsLeft);
     stopTimer();
     clearBannerTimer();
     secondsLeft = REARRANGE_SECONDS;
@@ -479,7 +637,7 @@
     setSlotsInteractive(true);
     showControlsForPhase();
     phaseLabelEl.textContent = "Rearrange";
-    setStatus("Swap any two Pokémon, then lock in.");
+    setStatus("Drag to reorder, or tap two to swap.");
     startTimer(() => lockIn());
   }
 
@@ -499,54 +657,88 @@
     return [...ordered].reverse();
   }
 
+  function longestCorrectStreak(correctFlags) {
+    let best = 0;
+    let run = 0;
+    correctFlags.forEach((ok) => {
+      if (ok) {
+        run += 1;
+        if (run > best) best = run;
+      } else {
+        run = 0;
+      }
+    });
+    return best;
+  }
+
+  function streakBonusPercent(streakLength, perfect) {
+    if (perfect) return 100;
+    if (streakLength < 2) return 0;
+    return STREAK_BASE_PERCENT + (streakLength - 2) * STREAK_STEP_PERCENT;
+  }
+
   function scoreResult() {
     const ordered = correctOrder();
     const expected = expectedForSlots(ordered);
     let correct = 0;
-    let baseScore = 0;
+    let slotTotal = 0;
     let shinyCount = 0;
     const details = [];
+    const correctFlags = [];
 
     slots.forEach((slot, i) => {
       const pokemon = slot.pokemon;
       const expect = expected[i];
       const isCorrect = Boolean(pokemon && expect && pokemon.id === expect.id);
       const shiny = Boolean(slot.shiny);
+      correctFlags.push(isCorrect);
 
       if (!pokemon) return;
 
       if (shiny) shinyCount += 1;
 
-      let slotPoints = 0;
-      if (isCorrect) {
-        correct += 1;
-        slotPoints = POINTS_BASE + pokemon.id;
-        if (shiny) slotPoints *= 2;
+      let basePoints = isCorrect ? POINTS_BASE : 0;
+      let shinyPoints = shiny ? POINTS_SHINY : 0;
+      if (isCorrect) correct += 1;
+      if (isCorrect && shiny) {
+        basePoints *= 2;
+        shinyPoints *= 2;
       }
+      const slotPoints = basePoints + shinyPoints;
 
-      const shinyBonus = shiny ? SHINY_BONUS : 0;
-      const total = slotPoints + shinyBonus;
-      baseScore += total;
+      slotTotal += slotPoints;
 
       const star = shiny ? " ★" : "";
       details.push({
         label: `${pokemon.name} (#${pokemon.id})${star}`,
-        value: total,
+        value: slotPoints,
         slotPoints,
-        shinyBonus,
+        basePoints,
+        shinyPoints,
         correct: isCorrect,
         shiny,
       });
     });
 
     const perfect = correct === SLOT_COUNT && placedCount() === SLOT_COUNT;
-    const score = perfect ? baseScore * 2 : baseScore;
+    const streakLength = longestCorrectStreak(correctFlags);
+    const streakPercent = streakBonusPercent(streakLength, perfect);
+    const timeBonus = Math.floor(placementTimeLeft);
+    const afterTime = slotTotal + timeBonus;
+    const streakBonus = Math.round((afterTime * streakPercent) / 100);
+    const score = afterTime + streakBonus;
 
     return {
       ordered,
       expected,
       correct,
-      baseScore,
+      slotTotal,
+      baseScore: slotTotal,
+      streakLength,
+      streakPercent,
+      streakBonus,
+      timeBonus,
+      afterTime,
       score,
       perfect,
       details,
@@ -558,6 +750,8 @@
     if (phase !== "rearrange") return;
     phase = "reveal";
     selectedSlot = null;
+    clearDragVisuals();
+    dragState = null;
     stopTimer();
     setSlotsInteractive(false);
     showControlsForPhase();
@@ -642,6 +836,7 @@
       const li = document.createElement("li");
       const classes = [];
       if (line.total) classes.push("score-breakdown__total");
+      if (line.section) classes.push("score-breakdown__section");
       if (line.kind === "correct") classes.push("score-breakdown__correct");
       if (line.kind === "wrong") classes.push("score-breakdown__wrong");
       if (line.kind === "slot") classes.push("score-breakdown__slot");
@@ -652,11 +847,27 @@
 
       const value = document.createElement("span");
       value.className = "score-breakdown__value";
-      value.textContent = String(line.value);
+      if (line.valueHtml) {
+        value.innerHTML = line.valueHtml;
+      } else {
+        value.textContent = String(line.value);
+      }
 
       li.append(label, value);
       scoreBreakdownEl.appendChild(li);
     });
+  }
+
+  function formatSlotScoreValue(detail) {
+    const parts = [];
+    if (detail.basePoints > 0) {
+      parts.push(`+${detail.basePoints}`);
+    }
+    if (detail.shinyPoints > 0) {
+      parts.push(`<span class="score-breakdown__shiny">+${detail.shinyPoints}</span>`);
+    }
+    if (!parts.length) return "0";
+    return parts.join(" ");
   }
 
   function finishGame(result) {
@@ -665,38 +876,35 @@
     showControlsForPhase();
     phaseLabelEl.textContent = "Done";
 
-    /** @type {{ label: string, value: string | number, total?: boolean, kind?: string }[]} */
+    /** @type {{ label: string, value: string | number, total?: boolean, section?: boolean, kind?: string }[]} */
     const lines = [];
 
     result.details.forEach((detail) => {
       const name = detail.label.replace(" ★", "");
-      const doubled = detail.shiny && detail.correct ? " ×2" : "";
-      let value;
-
-      if (detail.slotPoints > 0 && detail.shinyBonus > 0) {
-        value = `+${detail.slotPoints} +${detail.shinyBonus}`;
-      } else if (detail.shinyBonus > 0) {
-        value = `+${detail.shinyBonus}`;
-      } else if (detail.slotPoints > 0) {
-        value = `+${detail.slotPoints}`;
-      } else {
-        value = "0";
-      }
-
+      const doubled = detail.shiny && detail.correct ? " ★×2" : detail.shiny ? " ★" : "";
       lines.push({
         label: `${name}${doubled}`,
-        value,
-        kind: detail.correct || detail.shinyBonus > 0 ? "correct" : "wrong",
+        value: detail.slotPoints,
+        valueHtml: formatSlotScoreValue(detail),
+        kind: detail.correct ? "correct" : "wrong",
       });
     });
 
-    if (result.perfect) {
-      lines.push({
-        label: "Perfect bonus (×2)",
-        value: `+${result.baseScore}`,
-        kind: "correct",
-      });
-    }
+    lines.push({
+      label: `Time Bonus (${result.timeBonus}s)`,
+      value: `+${result.timeBonus}`,
+      section: true,
+      kind: result.timeBonus > 0 ? "correct" : "",
+    });
+
+    lines.push({
+      label:
+        result.streakPercent > 0
+          ? `Streak ×${result.streakLength} (+${result.streakPercent}%)`
+          : "Streak",
+      value: result.streakBonus > 0 ? `+${result.streakBonus}` : "+0",
+      kind: result.streakBonus > 0 ? "correct" : "",
+    });
 
     lines.push({ label: "Total", value: result.score, total: true });
 
@@ -712,14 +920,18 @@
       result.shinyCount > 0
         ? ` · ${result.shinyCount} shiny`
         : "";
-    overlayDetailEl.textContent = `${result.correct} of ${SLOT_COUNT} in the right order${shinyNote}`;
+    const streakNote =
+      result.streakLength >= 2
+        ? ` · streak ${result.streakLength}`
+        : "";
+    overlayDetailEl.textContent = `${result.correct} of ${SLOT_COUNT} in the right order${shinyNote}${streakNote}`;
     renderBreakdown(lines);
     finalScoreEl.hidden = true;
     overlayEl.hidden = false;
 
     setStatus(
       result.perfect
-        ? "All 10 correct — score doubled!"
+        ? "Perfect board — 100% streak bonus!"
         : result.shinyCount > 0
           ? `Shiny Pokémon found: ${result.shinyCount}`
           : "",
@@ -771,6 +983,9 @@
   function resetBoard() {
     stopTimer();
     clearBannerTimer();
+    clearDragVisuals();
+    dragState = null;
+    suppressNextSlotClick = false;
     phaseBannerEl.classList.remove("phase-banner--show");
     phaseBannerEl.hidden = true;
     phase = "idle";
@@ -780,6 +995,7 @@
     skipsLeft = MAX_SKIPS;
     lastScore = null;
     lastResult = null;
+    placementTimeLeft = 0;
     deck = shuffle(allPokemon);
 
     buildLadder();

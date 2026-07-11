@@ -10,9 +10,10 @@ Open `index.html` locally in a browser.
 
 - Fill all 10 ladder slots within 60 seconds (3 skips)
 - After filling, 15 seconds to rearrange, then lock in
-- Correct slot: 100 + Pokédex number · All 10 correct: score ×2
+- Correct slot: 100 · Shiny: +50 (gold) · Correct shiny: 300 ((100 + 50) × 2)
+- Longest correct streak: 10% at 2, +5% per extra (perfect 10 = 100%), applied after time bonus
+- Time bonus: seconds left when the ladder was filled
 - Each placed Pokémon has a 1/4096 shiny chance (revealed at the end)
-- Shiny: +100 · Correct shiny: slot points ×2
 
 ## Assets
 
