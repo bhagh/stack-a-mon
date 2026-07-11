@@ -79,6 +79,7 @@ button,
 
 .game-header,
 .ladder-wrap,
+.bottom-dock,
 .draw-area,
 .controls,
 .final-score,
@@ -86,6 +87,14 @@ button,
 .build-version {
   width: min(100%, var(--tower-w));
   box-sizing: border-box;
+}
+
+.bottom-dock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .game-header {
@@ -889,16 +898,21 @@ button,
   }
 }
 
-/* Compact / mobile: timer | title | skips, ladder shifted up */
+/* Compact / mobile: timer | title | skips; card + buttons docked at bottom */
 @media (max-width: 999px) {
   body {
-    align-items: flex-start;
+    align-items: stretch;
+    justify-content: flex-start;
     padding-top: max(0.4rem, env(safe-area-inset-top));
+    padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
   }
 
   .game {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
     justify-content: flex-start;
-    gap: 0.35rem;
+    gap: 0.3rem;
     padding-top: 0.1rem;
   }
 
@@ -910,6 +924,7 @@ button,
     column-gap: 0.35rem;
     row-gap: 0;
     width: min(100%, var(--tower-w));
+    flex-shrink: 0;
   }
 
   .hud {
@@ -948,8 +963,11 @@ button,
   }
 
   .ladder-wrap {
-    gap: 0.1rem;
-    margin-top: -0.1rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 0.08rem;
+    margin-top: 0;
+    justify-content: center;
   }
 
   .ladder-hint {
@@ -957,12 +975,100 @@ button,
   }
 
   .ladder {
-    gap: 0.32rem;
+    gap: 0.28rem;
+  }
+
+  .bottom-dock {
+    margin-top: auto;
+    flex-shrink: 0;
+    gap: 0.35rem;
+    padding-top: 0.35rem;
+    z-index: 5;
+    background:
+      linear-gradient(
+        180deg,
+        transparent 0%,
+        var(--bg-deep) 28%,
+        var(--bg-deep) 100%
+      );
+  }
+
+  .draw-card {
+    min-height: 2.85rem;
+    padding: 0.4rem 0.75rem;
+    box-shadow: 0 4px 12px var(--shadow);
+  }
+
+  .phase-label {
+    font-size: 0.68rem;
+  }
+
+  .controls {
+    min-height: 2.75rem;
+    gap: 0.4rem;
+  }
+
+  .btn {
+    padding: 0.7rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .final-score,
+  .status {
+    min-height: 1.1em;
+    font-size: 0.8rem;
+  }
+
+  .build-version {
+    font-size: 0.58rem;
+  }
+
+  .overlay {
+    padding: 0.65rem;
+    align-items: center;
+  }
+
+  .overlay-panel:not(.overlay-panel--help) {
+    max-height: min(92dvh, 40rem);
+    padding: 1rem 1rem 0.75rem;
+    gap: 0.35rem;
+  }
+
+  .overlay-panel:not(.overlay-panel--help) .overlay-title {
+    font-size: 1.45rem;
+  }
+
+  .overlay-panel:not(.overlay-panel--help) .overlay-score {
+    font-size: 1.75rem;
+  }
+
+  .overlay-panel:not(.overlay-panel--help) .overlay-detail {
+    font-size: 0.85rem;
+  }
+
+  .overlay-panel:not(.overlay-panel--help) .score-breakdown {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    margin: 0.15rem auto 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .overlay-panel:not(.overlay-panel--help) .score-breakdown li {
+    font-size: 0.8rem;
+  }
+
+  .overlay-panel:not(.overlay-panel--help) > .btn {
+    flex-shrink: 0;
+    width: auto;
+    min-width: 6.5rem;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.88rem;
   }
 
   :root {
-    --slot-h: clamp(2.15rem, 5vh, 2.55rem);
-    --sprite: 1.85rem;
+    --slot-h: clamp(1.95rem, 4.4vh, 2.4rem);
+    --sprite: 1.7rem;
   }
 }
 
