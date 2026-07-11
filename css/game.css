@@ -81,6 +81,8 @@ button,
 .ladder-wrap,
 .bottom-dock,
 .draw-area,
+.draw-area__center,
+.draw-area__menu,
 .controls,
 .final-score,
 .status,
@@ -114,18 +116,11 @@ button,
   line-height: 1;
 }
 
-.hud {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  width: 100%;
-}
-
 .timer-wrap,
 .skips {
   display: flex;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .timer,
@@ -133,20 +128,40 @@ button,
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.15rem;
-  min-width: 5rem;
-  padding: 0.3rem 0.75rem 0.4rem;
+  width: 5.75rem;
+  min-width: 5.75rem;
+  padding: 0.35rem 0.55rem 0.4rem;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(255, 253, 248, 0.7);
+  box-sizing: border-box;
 }
 
 .skips {
+  appearance: none;
+  font: inherit;
+  color: inherit;
   cursor: default;
   user-select: none;
 }
 
-.skips--debug {
+.skips--action:not(:disabled) {
+  cursor: pointer;
+}
+
+.skips--action:not(:disabled):hover {
+  border-color: var(--ink);
+}
+
+.skips--disabled,
+.skips:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.timer--debug {
   border-color: var(--shiny);
   box-shadow: 0 0 0 2px rgba(230, 180, 34, 0.35);
 }
@@ -167,6 +182,8 @@ button,
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  min-width: 4ch;
+  text-align: center;
 }
 
 .timer--low .timer-value {
@@ -419,14 +436,60 @@ button,
 }
 
 .draw-area {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: 0.45rem;
+  min-height: 3.4rem;
+  width: min(100%, calc(var(--tower-w) + 7.5rem));
+}
+
+.draw-area--play {
+  grid-template-columns: auto minmax(0, var(--tower-w)) auto;
+  justify-items: stretch;
+}
+
+.draw-area__center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+  min-height: 3.4rem;
+}
+
+.draw-area__menu {
+  width: 100%;
+}
+
+.draw-area__menu .btn {
+  padding: 0.75rem 1rem;
+}
+
+.draw-area__lock {
+  width: 100%;
+}
+
+.draw-area__lock .btn {
+  width: 100%;
+  min-height: 3.4rem;
+  padding: 0.75rem 1rem;
+}
+
+.draw-area--play .draw-card {
+  width: 100%;
+}
+
+.timer-wrap[hidden],
+.skips[hidden] {
+  display: none !important;
 }
 
 .draw-card {
   width: 100%;
+  height: 3.4rem;
   min-height: 3.4rem;
   border: 2px solid var(--ink);
   border-radius: var(--radius);
@@ -436,17 +499,11 @@ button,
   place-items: center;
   padding: 0.55rem 0.85rem;
   text-align: center;
+  box-sizing: border-box;
 }
 
-.phase-label {
-  margin: 0;
-  min-height: 1.1em;
-  text-align: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
+.draw-card[hidden] {
+  display: none !important;
 }
 
 .card--face-down {
@@ -474,6 +531,10 @@ button,
   font-size: clamp(1.05rem, 4.5vw, 1.35rem);
   font-weight: 700;
   line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status {
@@ -898,7 +959,7 @@ button,
   }
 }
 
-/* Compact / mobile: timer | title | skips; card + buttons docked at bottom */
+/* Compact / mobile: title; time | reveal | skips once playing */
 @media (max-width: 999px) {
   body {
     align-items: stretch;
@@ -917,38 +978,32 @@ button,
   }
 
   .game-header {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "timer brand skips";
-    align-items: center;
-    column-gap: 0.35rem;
-    row-gap: 0;
     width: min(100%, var(--tower-w));
     flex-shrink: 0;
   }
 
-  .hud {
-    display: contents;
-  }
-
-  .timer-wrap {
-    grid-area: timer;
-  }
-
   .brand {
-    grid-area: brand;
     font-size: clamp(1.15rem, 5vw, 1.55rem);
     min-width: 0;
   }
 
-  .skips {
-    grid-area: skips;
+  .draw-area {
+    width: 100%;
+    max-width: min(100%, calc(var(--tower-w) + 5.5rem));
+    gap: 0.3rem;
+    min-height: 2.85rem;
+    flex-shrink: 0;
+  }
+
+  .draw-area--play {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .timer,
   .skips {
-    min-width: 3.35rem;
-    padding: 0.2rem 0.4rem 0.25rem;
+    width: 4.25rem;
+    min-width: 4.25rem;
+    padding: 0.25rem 0.35rem 0.3rem;
   }
 
   .timer-label,
@@ -959,7 +1014,26 @@ button,
 
   .timer-value,
   .skips-value {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
+    min-width: 4ch;
+  }
+
+  .draw-area__menu .btn {
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+  }
+
+  .draw-area__lock .btn {
+    min-height: 2.85rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.95rem;
+  }
+
+  .draw-card {
+    height: 2.85rem;
+    min-height: 2.85rem;
+    padding: 0.4rem 0.75rem;
+    box-shadow: 0 4px 12px var(--shadow);
   }
 
   .ladder-wrap {
@@ -991,16 +1065,6 @@ button,
         var(--bg-deep) 28%,
         var(--bg-deep) 100%
       );
-  }
-
-  .draw-card {
-    min-height: 2.85rem;
-    padding: 0.4rem 0.75rem;
-    box-shadow: 0 4px 12px var(--shadow);
-  }
-
-  .phase-label {
-    font-size: 0.68rem;
   }
 
   .controls {
@@ -1072,7 +1136,7 @@ button,
   }
 }
 
-/* Desktop: wide viewport — larger slots for clearer sprites */
+/* Desktop: wide viewport — reveal above ladder, larger slots */
 @media (min-width: 1000px) {
   :root {
     --slot-h: 3.35rem;
@@ -1089,6 +1153,27 @@ button,
 
   .brand {
     font-size: 2.5rem;
+  }
+
+  .draw-area {
+    flex-shrink: 0;
+    width: min(100%, calc(var(--tower-w) + 8rem));
+  }
+
+  .draw-area--play .draw-card {
+    width: min(100%, 14rem);
+    height: var(--slot-h);
+    min-height: var(--slot-h);
+    margin-inline: auto;
+  }
+
+  .draw-area__lock {
+    width: min(100%, 14rem);
+    margin-inline: auto;
+  }
+
+  .draw-area__lock .btn {
+    min-height: var(--slot-h);
   }
 
   .ladder {
@@ -1128,12 +1213,14 @@ button,
 
   .timer,
   .skips {
-    min-width: 5.5rem;
-    padding: 0.4rem 0.9rem 0.5rem;
+    width: 6.25rem;
+    min-width: 6.25rem;
+    padding: 0.45rem 0.65rem 0.5rem;
   }
 
   .timer-value,
   .skips-value {
     font-size: 1.65rem;
+    min-width: 4ch;
   }
 }

@@ -14,19 +14,38 @@
   <main class="game" id="game">
     <header class="game-header">
       <h1 class="brand">Stack-a-Mon</h1>
-      <div class="hud">
-        <div class="timer-wrap">
-          <div class="timer" id="timer" aria-live="polite">
-            <span class="timer-label">Time</span>
-            <span class="timer-value" id="timer-value">60.0</span>
-          </div>
-        </div>
-        <div class="skips" id="skips" aria-label="Skips remaining">
-          <span class="skips-label">Skips</span>
-          <span class="skips-value" id="skips-value">3</span>
+    </header>
+
+    <section class="draw-area" id="draw-area" aria-label="Current Pokémon">
+      <div class="timer-wrap" id="timer-wrap" hidden>
+        <div class="timer" id="timer" aria-live="polite">
+          <span class="timer-label">Time</span>
+          <span class="timer-value" id="timer-value">60.0</span>
         </div>
       </div>
-    </header>
+
+      <div class="draw-area__center">
+        <div class="controls-row draw-area__menu" id="pre-game-controls">
+          <button type="button" class="btn btn--primary" id="start-btn">Start Game</button>
+          <button type="button" class="btn btn--secondary" id="help-btn">How to Play</button>
+        </div>
+        <div class="draw-card card card--face-down card--hidden" id="current-card" hidden>
+          <span class="card-name" id="card-name">?</span>
+        </div>
+        <div class="controls-row draw-area__lock" id="rearrange-controls" hidden>
+          <button type="button" class="btn btn--primary" id="lock-btn">Lock In</button>
+        </div>
+        <div class="controls-row draw-area__menu" id="post-game-controls" hidden>
+          <button type="button" class="btn btn--secondary" id="view-summary-btn">Summary</button>
+          <button type="button" class="btn btn--primary" id="new-game-btn">New Game</button>
+        </div>
+      </div>
+
+      <button type="button" class="skips" id="skips" aria-label="Skips remaining" hidden>
+        <span class="skips-label">Skips</span>
+        <span class="skips-value" id="skips-value">3</span>
+      </button>
+    </section>
 
     <section class="ladder-wrap" aria-label="Pokémon ladder">
       <span class="ladder-hint ladder-hint--high" aria-hidden="true">High</span>
@@ -35,30 +54,6 @@
     </section>
 
     <div class="bottom-dock">
-      <section class="draw-area" id="draw-area" aria-label="Current Pokémon">
-        <div class="draw-card card card--face-down" id="current-card">
-          <span class="card-name" id="card-name">?</span>
-        </div>
-        <p class="phase-label" id="phase-label">Ready</p>
-      </section>
-
-      <section class="controls" id="controls">
-        <div class="controls-row" id="pre-game-controls">
-          <button type="button" class="btn btn--primary" id="start-btn">Start Game</button>
-          <button type="button" class="btn btn--secondary" id="help-btn">How to Play</button>
-        </div>
-        <div class="controls-row" id="play-controls" hidden>
-          <button type="button" class="btn btn--secondary" id="skip-btn">Skip</button>
-        </div>
-        <div class="controls-row" id="rearrange-controls" hidden>
-          <button type="button" class="btn btn--primary" id="lock-btn">Lock In</button>
-        </div>
-        <div class="controls-row" id="post-game-controls" hidden>
-          <button type="button" class="btn btn--secondary" id="view-summary-btn">Summary</button>
-          <button type="button" class="btn btn--primary" id="new-game-btn">New Game</button>
-        </div>
-      </section>
-
       <p class="final-score" id="final-score" hidden></p>
       <p class="status" id="status" aria-live="polite"></p>
       <p class="build-version" id="build-version"></p>
@@ -85,7 +80,7 @@
       <h2 class="overlay-title" id="help-title">How to Play</h2>
       <div class="help-rules">
         <p>Stack <strong>10 Pokémon</strong> on the ladder by National Pokédex number — <strong>lowest at the bottom, highest at the top</strong>.</p>
-        <p>You have <strong>60 seconds</strong> and <strong>3 skips</strong>. Tap a slot to place the current Pokémon, or skip for a new one. No repeats. When you’re out of skips, you must place the Pokémon shown.</p>
+        <p>You have <strong>60 seconds</strong> and <strong>3 skips</strong>. Tap a slot to place the current Pokémon. To skip, tap the <strong>Skips</strong> button beside it. No repeats. When you’re out of skips, you must place the Pokémon shown.</p>
         <p>Once all 10 slots are filled, the timer resets to <strong>15 seconds</strong> so you can rearrange. <strong>Drag</strong> Pokémon to reorder, or tap two to swap. Lock in when ready — or the ladder locks automatically when time runs out.</p>
         <p><strong>Scoring:</strong> Each Pokémon in the correct slot scores a flat <strong>100</strong>. A shiny always adds <strong>+50</strong> (shown in gold). If that shiny is also in the correct slot, the whole slot is doubled to <strong>300</strong>.</p>
         <p><strong>Streak bonus:</strong> Your longest run of consecutive correct slots adds a multiplier — <strong>10%</strong> for a streak of 2, then <strong>+5%</strong> per extra Pokémon. A perfect board of 10 always gets a <strong>100%</strong> streak bonus. The streak applies after time bonus is added.</p>

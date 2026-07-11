@@ -8,29 +8,29 @@
   const SPRITE_REVEAL_MS = 420;
   const SHINY_BANNER_MS = 2400;
   const REARRANGE_BANNER_MS = 2400;
+  const START_REVEAL_DELAY_MS = 1100;
   const POINTS_BASE = 100;
   const POINTS_SHINY = 50;
   const SHINY_ODDS_DEFAULT = 4096;
   const SHINY_ODDS_DEBUG = 10;
-  const DEBUG_SKIP_CLICKS = 3;
+  const DEBUG_TIMER_CLICKS = 5;
   const STREAK_BASE_PERCENT = 10;
   const STREAK_STEP_PERCENT = 5;
 
   const ladderEl = document.getElementById("ladder");
+  const drawAreaEl = document.getElementById("draw-area");
+  const timerWrapEl = document.getElementById("timer-wrap");
   const timerEl = document.getElementById("timer");
   const timerValueEl = document.getElementById("timer-value");
   const skipsValueEl = document.getElementById("skips-value");
   const skipsEl = document.getElementById("skips");
   const currentCardEl = document.getElementById("current-card");
   const cardNameEl = document.getElementById("card-name");
-  const phaseLabelEl = document.getElementById("phase-label");
   const startBtn = document.getElementById("start-btn");
-  const skipBtn = document.getElementById("skip-btn");
   const lockBtn = document.getElementById("lock-btn");
   const newGameBtn = document.getElementById("new-game-btn");
   const viewSummaryBtn = document.getElementById("view-summary-btn");
   const preGameControls = document.getElementById("pre-game-controls");
-  const playControls = document.getElementById("play-controls");
   const rearrangeControls = document.getElementById("rearrange-controls");
   const postGameControls = document.getElementById("post-game-controls");
   const statusEl = document.getElementById("status");
@@ -70,8 +70,9 @@
   let lastResult = null;
   let helpPaused = false;
   let shinyOdds = SHINY_ODDS_DEFAULT;
-  let skipDebugClicks = 0;
+  let debugTimerClicks = 0;
   let placementTimeLeft = 0;
+  let startToken = 0;
   /** @type {null | { from: number, pointerId: number, startX: number, startY: number, active: boolean, over: number | null, ghost: HTMLElement | null }} */
   let dragState = null;
   let suppressNextSlotClick = false;
@@ -105,7 +106,20 @@
 
   function updateSkipsDisplay() {
     skipsValueEl.textContent = String(skipsLeft);
-    skipBtn.disabled = phase !== "placing" || skipsLeft <= 0 || !current;
+    const canSkip = phase === "placing" && skipsLeft > 0 && Boolean(current);
+    skipsEl.classList.toggle("skips--action", phase === "placing");
+    skipsEl.classList.toggle("skips--disabled", phase === "placing" && !canSkip);
+    skipsEl.disabled = phase === "placing" && !canSkip;
+    if (phase === "placing") {
+      skipsEl.setAttribute(
+        "aria-label",
+        canSkip
+          ? `Skip current Pokémon, ${skipsLeft} skips left`
+          : "No skips left"
+      );
+    } else {
+      skipsEl.setAttribute("aria-label", `Skips remaining: ${skipsLeft}`);
+    }
   }
 
   function placingHint() {
@@ -113,7 +127,7 @@
       setStatus("No skips left — place this Pokémon on the ladder.");
       return;
     }
-    setStatus("Place on an empty slot, or skip.");
+    setStatus("Place on an empty slot, or tap Skips to skip.");
   }
 
   function flashTimer(kind) {
@@ -178,12 +192,18 @@
   }
 
   function onSkipsPillClick() {
-    if (phase !== "idle") return;
-    skipDebugClicks += 1;
-    if (skipDebugClicks < DEBUG_SKIP_CLICKS) return;
+    if (phase === "placing") {
+      onSkip();
+    }
+  }
+
+  function onTimerPillClick() {
+    if (timerWrapEl.hidden) return;
+    debugTimerClicks += 1;
+    if (debugTimerClicks < DEBUG_TIMER_CLICKS) return;
     if (shinyOdds === SHINY_ODDS_DEBUG) return;
     shinyOdds = SHINY_ODDS_DEBUG;
-    skipsEl.classList.add("skips--debug");
+    timerEl.classList.add("timer--debug");
   }
 
   function spritePath(id, shiny) {
@@ -504,16 +524,23 @@
   }
 
   function showControlsForPhase() {
+    const showPlayHud =
+      phase === "placing" ||
+      phase === "rearrange-intro" ||
+      phase === "rearrange";
+    const showCard = phase === "placing";
+    const hideCard = !showCard;
+
     preGameControls.hidden = phase !== "idle";
-    playControls.hidden = phase !== "placing";
     rearrangeControls.hidden = phase !== "rearrange";
     postGameControls.hidden = phase !== "done";
-    currentCardEl.classList.toggle(
-      "card--hidden",
-      phase === "rearrange-intro" ||
-        phase === "rearrange" ||
-        phase === "reveal"
-    );
+
+    timerWrapEl.hidden = !showPlayHud;
+    skipsEl.hidden = !showPlayHud;
+    drawAreaEl.classList.toggle("draw-area--play", showPlayHud);
+
+    currentCardEl.hidden = hideCard;
+    currentCardEl.classList.toggle("card--hidden", hideCard);
   }
 
   function onSlotClick(index) {
@@ -615,7 +642,6 @@
     setSlotsInteractive(false);
     slots.forEach((_, i) => renderSlot(i));
     showControlsForPhase();
-    phaseLabelEl.textContent = "Get ready";
     setStatus("");
 
     showPhaseBanner("Final 15 seconds", "Rearrange your stack");
@@ -636,7 +662,6 @@
     updateTimerDisplay();
     setSlotsInteractive(true);
     showControlsForPhase();
-    phaseLabelEl.textContent = "Rearrange";
     setStatus("Drag to reorder, or tap two to swap.");
     startTimer(() => lockIn());
   }
@@ -755,7 +780,6 @@
     stopTimer();
     setSlotsInteractive(false);
     showControlsForPhase();
-    phaseLabelEl.textContent = "Reveal";
     setStatus("");
     slots.forEach((_, i) => renderSlot(i));
 
@@ -874,7 +898,6 @@
     phase = "done";
     lastScore = result.score;
     showControlsForPhase();
-    phaseLabelEl.textContent = "Done";
 
     /** @type {{ label: string, value: string | number, total?: boolean, section?: boolean, kind?: string }[]} */
     const lines = [];
@@ -947,7 +970,6 @@
     current = null;
     updateCurrentCard();
     showControlsForPhase();
-    phaseLabelEl.textContent = "Done";
     lastScore = 0;
     lastResult = null;
 
@@ -981,6 +1003,7 @@
   }
 
   function resetBoard() {
+    startToken += 1;
     stopTimer();
     clearBannerTimer();
     clearDragVisuals();
@@ -1006,7 +1029,6 @@
     showControlsForPhase();
 
     startBtn.disabled = allPokemon.length === 0;
-    phaseLabelEl.textContent = "Ready";
     overlayEl.hidden = true;
     helpOverlayEl.hidden = true;
     finalScoreEl.hidden = true;
@@ -1015,20 +1037,29 @@
     setStatus(allPokemon.length ? "" : "Pokémon data failed to load.", "bad");
   }
 
-  function startGame() {
+  async function startGame() {
     if (allPokemon.length === 0) return;
     resetBoard();
+    const runToken = ++startToken;
     phase = "placing";
     showControlsForPhase();
-    phaseLabelEl.textContent = "Place";
+    setSlotsInteractive(false);
+    current = null;
+    updateCurrentCard();
+    updateSkipsDisplay();
+    setStatus("");
+
+    await wait(START_REVEAL_DELAY_MS);
+    if (runToken !== startToken || phase !== "placing") return;
+
     setSlotsInteractive(true);
-    startTimer(() => endIncomplete());
     drawNext();
+    startTimer(() => endIncomplete());
     placingHint();
   }
 
   function openHelp() {
-    if (phase === "placing" || phase === "rearrange") {
+    if ((phase === "placing" || phase === "rearrange") && timerId !== null) {
       helpPaused = true;
       stopTimer();
     }
@@ -1049,7 +1080,6 @@
   });
 
   startBtn.addEventListener("click", startGame);
-  skipBtn.addEventListener("click", onSkip);
   lockBtn.addEventListener("click", lockIn);
   newGameBtn.addEventListener("click", resetBoard);
   viewSummaryBtn.addEventListener("click", openSummary);
@@ -1057,6 +1087,7 @@
   helpBtn.addEventListener("click", openHelp);
   helpCloseBtn.addEventListener("click", closeHelp);
   skipsEl.addEventListener("click", onSkipsPillClick);
+  timerEl.addEventListener("click", onTimerPillClick);
 
   resetBoard();
 })();
