@@ -9,13 +9,16 @@
   const SHINY_BANNER_MS = 2400;
   const REARRANGE_BANNER_MS = 2400;
   const POINTS_BASE = 100;
-  const SHINY_ODDS = 4096;
+  const SHINY_ODDS_DEFAULT = 4096;
+  const SHINY_ODDS_DEBUG = 10;
   const SHINY_BONUS = 100;
+  const DEBUG_SKIP_CLICKS = 3;
 
   const ladderEl = document.getElementById("ladder");
   const timerEl = document.getElementById("timer");
   const timerValueEl = document.getElementById("timer-value");
   const skipsValueEl = document.getElementById("skips-value");
+  const skipsEl = document.getElementById("skips");
   const currentCardEl = document.getElementById("current-card");
   const cardNameEl = document.getElementById("card-name");
   const phaseLabelEl = document.getElementById("phase-label");
@@ -48,7 +51,7 @@
 
   const allPokemon = Array.isArray(window.POKEMON) ? window.POKEMON : [];
 
-  /** @type {{ pokemon: { id: number, name: string, slug: string } | null, shiny: boolean, spriteRevealed: boolean, el: HTMLButtonElement, nameEl: HTMLElement, dexEl: HTMLElement, spriteEl: HTMLImageElement }[]} */
+  /** @type {{ pokemon: { id: number, name: string, slug: string } | null, shiny: boolean, spriteRevealed: boolean, el: HTMLButtonElement, indexEl: HTMLElement, nameEl: HTMLElement, dexEl: HTMLElement, spriteEl: HTMLImageElement }[]} */
   let slots = [];
   /** @type {{ id: number, name: string, slug: string }[]} */
   let deck = [];
@@ -64,6 +67,8 @@
   let lastScore = null;
   let lastResult = null;
   let helpPaused = false;
+  let shinyOdds = SHINY_ODDS_DEFAULT;
+  let skipDebugClicks = 0;
 
   function shuffle(arr) {
     const a = [...arr];
@@ -162,7 +167,16 @@
   }
 
   function rollShiny() {
-    return Math.floor(Math.random() * SHINY_ODDS) === 0;
+    return Math.floor(Math.random() * shinyOdds) === 0;
+  }
+
+  function onSkipsPillClick() {
+    if (phase !== "idle") return;
+    skipDebugClicks += 1;
+    if (skipDebugClicks < DEBUG_SKIP_CLICKS) return;
+    if (shinyOdds === SHINY_ODDS_DEBUG) return;
+    shinyOdds = SHINY_ODDS_DEBUG;
+    skipsEl.classList.add("skips--debug");
   }
 
   function spritePath(id, shiny) {
@@ -200,6 +214,11 @@
       btn.disabled = true;
       btn.dataset.index = String(i);
 
+      const indexEl = document.createElement("span");
+      indexEl.className = "slot-index";
+      indexEl.textContent = String(SLOT_COUNT - i);
+      indexEl.setAttribute("aria-hidden", "true");
+
       const spriteEl = document.createElement("img");
       spriteEl.className = "slot-sprite";
       spriteEl.alt = "";
@@ -214,7 +233,7 @@
       dexEl.className = "slot-dex";
       dexEl.setAttribute("aria-hidden", "true");
 
-      btn.append(spriteEl, nameEl, dexEl);
+      btn.append(indexEl, spriteEl, nameEl, dexEl);
       btn.addEventListener("click", () => onSlotClick(i));
       ladderEl.appendChild(btn);
 
@@ -223,6 +242,7 @@
         shiny: false,
         spriteRevealed: false,
         el: btn,
+        indexEl,
         nameEl,
         dexEl,
         spriteEl,
@@ -252,7 +272,8 @@
     const slot = slots[index];
     if (!slot) return;
 
-    slot.el.classList.toggle("slot--filled", Boolean(slot.pokemon));
+    const filled = Boolean(slot.pokemon);
+    slot.el.classList.toggle("slot--filled", filled);
     slot.el.classList.toggle("slot--selected", selectedSlot === index);
     slot.el.classList.toggle(
       "slot--shiny",
@@ -261,6 +282,7 @@
     slot.el.classList.remove("slot--correct", "slot--wrong", "slot--place");
     slot.dexEl.classList.remove("slot-dex--show");
     slot.dexEl.textContent = "";
+    slot.indexEl.hidden = filled;
 
     if (slot.pokemon) {
       slot.nameEl.textContent = slot.pokemon.name;
@@ -647,28 +669,25 @@
     const lines = [];
 
     result.details.forEach((detail) => {
-      if (detail.slotPoints > 0) {
-        const doubled = detail.shiny && detail.correct ? " ×2" : "";
-        lines.push({
-          label: `${detail.label.replace(" ★", "")}${doubled}`,
-          value: `+${detail.slotPoints}`,
-          kind: "correct",
-        });
+      const name = detail.label.replace(" ★", "");
+      const doubled = detail.shiny && detail.correct ? " ×2" : "";
+      let value;
+
+      if (detail.slotPoints > 0 && detail.shinyBonus > 0) {
+        value = `+${detail.slotPoints} +${detail.shinyBonus}`;
+      } else if (detail.shinyBonus > 0) {
+        value = `+${detail.shinyBonus}`;
+      } else if (detail.slotPoints > 0) {
+        value = `+${detail.slotPoints}`;
       } else {
-        lines.push({
-          label: detail.label.replace(" ★", ""),
-          value: "0",
-          kind: "wrong",
-        });
+        value = "0";
       }
 
-      if (detail.shinyBonus > 0) {
-        lines.push({
-          label: `Shiny ${detail.label.replace(" ★", "").split(" (")[0]}`,
-          value: `+${detail.shinyBonus}`,
-          kind: "correct",
-        });
-      }
+      lines.push({
+        label: `${name}${doubled}`,
+        value,
+        kind: detail.correct || detail.shinyBonus > 0 ? "correct" : "wrong",
+      });
     });
 
     if (result.perfect) {
@@ -821,6 +840,7 @@
   closeBtn.addEventListener("click", closeOverlay);
   helpBtn.addEventListener("click", openHelp);
   helpCloseBtn.addEventListener("click", closeHelp);
+  skipsEl.addEventListener("click", onSkipsPillClick);
 
   resetBoard();
 })();
