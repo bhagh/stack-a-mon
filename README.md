@@ -14,7 +14,7 @@ Open `index.html` locally in a browser.
 - Correct slot: 100 · Shiny: +50 (gold) · Correct shiny: 300 ((100 + 50) × 2)
 - Longest correct streak: 10% at 2, +5% per extra (perfect 10 = 100%), applied after time bonus
 - Time bonus: seconds left when the ladder was filled (Mode 1) or when you lock in (Mode 2); requires at least one correct slot
-- Each placed Pokémon has a 1/4096 shiny chance (revealed at the end)
+- Each placed Pokémon has a 1/100 shiny chance (revealed at the end)
 
 ## Assets
 
