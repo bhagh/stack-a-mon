@@ -42,7 +42,7 @@
       </div>
 
       <button type="button" class="skips" id="skips" aria-label="Skips remaining" hidden>
-        <span class="skips-label">Skips</span>
+        <span class="skips-label" id="skips-label">Skips</span>
         <span class="skips-value" id="skips-value">3</span>
       </button>
     </section>
@@ -56,6 +56,21 @@
     <div class="bottom-dock">
       <p class="final-score" id="final-score" hidden></p>
       <p class="status" id="status" aria-live="polite"></p>
+      <div class="mode-toggle" id="mode-toggle">
+        <span class="mode-toggle__label" id="mode-label-1">Mode 1</span>
+        <button
+          type="button"
+          class="mode-switch"
+          id="mode-switch"
+          role="switch"
+          aria-checked="false"
+          aria-label="Game mode"
+          title="Toggle Mode 1 / Mode 2"
+        >
+          <span class="mode-switch__thumb" aria-hidden="true"></span>
+        </button>
+        <span class="mode-toggle__label" id="mode-label-2">Mode 2</span>
+      </div>
       <p class="build-version" id="build-version"></p>
     </div>
   </main>
@@ -79,12 +94,20 @@
     <div class="overlay-panel overlay-panel--help" role="dialog" aria-labelledby="help-title">
       <h2 class="overlay-title" id="help-title">How to Play</h2>
       <div class="help-rules">
-        <p>Stack <strong>10 Pokémon</strong> on the ladder by National Pokédex number — <strong>lowest at the bottom, highest at the top</strong>.</p>
-        <p>You have <strong>60 seconds</strong> and <strong>3 skips</strong>. Tap a slot to place the current Pokémon. To skip, tap the <strong>Skips</strong> button beside it. No repeats. When you’re out of skips, you must place the Pokémon shown.</p>
-        <p>Once all 10 slots are filled, the timer resets to <strong>15 seconds</strong> so you can rearrange. <strong>Drag</strong> Pokémon to reorder, tap two to swap, or use the <strong>up/down arrows</strong> on each slot. Lock in when ready — or the ladder locks automatically when time runs out.</p>
-        <p><strong>Scoring:</strong> Each Pokémon in the correct slot scores a flat <strong>100</strong>. A shiny always adds <strong>+50</strong> (shown in gold). If that shiny is also in the correct slot, the whole slot is doubled to <strong>300</strong>.</p>
+        <p>Stack <strong>10 Pokémon</strong> on the ladder by National Pokédex number — <strong>lowest at the bottom, highest at the top</strong>. Use the slider above the version number to switch modes before you start.</p>
+
+        <h3 class="help-rules__heading">Mode 1</h3>
+        <p>You have <strong>60 seconds</strong> and <strong>3 skips</strong>. A Pokémon appears in the reveal window — tap an empty ladder slot to place it. To skip, tap the <strong>Skips</strong> button beside the reveal window. No repeats. When you’re out of skips, you must place the Pokémon shown.</p>
+        <p>Once all 10 slots are filled, the timer resets to <strong>20 seconds</strong> so you can rearrange them. <strong>Drag</strong> Pokémon, tap two to swap, or use the <strong>up/down arrows</strong>. Tap <strong>Lock In</strong> when ready, or the ladder locks automatically when time runs out.</p>
+
+        <h3 class="help-rules__heading">Mode 2</h3>
+        <p>When the game starts, all <strong>10 slots fill automatically</strong> with random Pokémon. After the ladder is full, a <strong>60-second</strong> timer begins.</p>
+        <p>Reorder the stack with <strong>drag</strong>, tap-to-swap, or the <strong>up/down arrows</strong>. You also get <strong>2 replaces</strong>: select a Pokémon on the ladder, then tap <strong>Replace</strong> to swap it for a new one. Tap <strong>Lock In</strong> when you are done, or the board will lock in automatically when time runs out.</p>
+
+        <h3 class="help-rules__heading">Scoring</h3>
+        <p>Each Pokémon in the correct slot scores a flat <strong>100</strong>. A shiny always adds <strong>+50</strong> (shown in gold). If that shiny is also in the correct slot, the whole slot is doubled to <strong>300</strong>.</p>
         <p><strong>Streak bonus:</strong> Your longest run of consecutive correct slots adds a multiplier — <strong>10%</strong> for a streak of 2, then <strong>+5%</strong> per extra Pokémon. A perfect board of 10 always gets a <strong>100%</strong> streak bonus. The streak applies after time bonus is added.</p>
-        <p><strong>Time bonus:</strong> You also score points equal to the seconds left on the clock when you finished placing all 10.</p>
+        <p><strong>Time bonus:</strong> Mode 1 awards points equal to the seconds left when you finished placing all 10. Mode 2 awards points equal to the seconds left when you lock in (so locking in early earns a bigger bonus). In both modes, you need at least <strong>one Pokémon in the correct slot</strong> to receive any time bonus.</p>
         <p><strong>Shinies:</strong> Each placed Pokémon has a <strong>1/4096</strong> chance to be shiny (revealed at the end).</p>
       </div>
       <button type="button" class="btn btn--primary" id="help-close-btn">Got it</button>

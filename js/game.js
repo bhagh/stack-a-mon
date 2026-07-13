@@ -1,14 +1,16 @@
 (() => {
   const SLOT_COUNT = 10;
   const START_SECONDS = 60;
-  const REARRANGE_SECONDS = 15;
+  const REARRANGE_SECONDS = 20;
   const MAX_SKIPS = 3;
+  const MAX_REPLACES = 2;
   const REVEAL_PAUSE_MS = 900;
   const REVEAL_STAGGER_MS = 500;
   const SPRITE_REVEAL_MS = 420;
   const SHINY_BANNER_MS = 2400;
   const REARRANGE_BANNER_MS = 2400;
   const START_REVEAL_DELAY_MS = 1100;
+  const MODE2_FILL_STAGGER_MS = 320;
   const POINTS_BASE = 100;
   const POINTS_SHINY = 50;
   const SHINY_ODDS_DEFAULT = 4096;
@@ -23,6 +25,7 @@
   const timerEl = document.getElementById("timer");
   const timerValueEl = document.getElementById("timer-value");
   const skipsValueEl = document.getElementById("skips-value");
+  const skipsLabelEl = document.getElementById("skips-label");
   const skipsEl = document.getElementById("skips");
   const currentCardEl = document.getElementById("current-card");
   const cardNameEl = document.getElementById("card-name");
@@ -45,6 +48,10 @@
   const helpOverlayEl = document.getElementById("help-overlay");
   const helpCloseBtn = document.getElementById("help-close-btn");
   const buildVersionEl = document.getElementById("build-version");
+  const modeSwitchEl = document.getElementById("mode-switch");
+  const modeLabel1El = document.getElementById("mode-label-1");
+  const modeLabel2El = document.getElementById("mode-label-2");
+  const modeToggleEl = document.getElementById("mode-toggle");
   const phaseBannerEl = document.getElementById("phase-banner");
   const phaseBannerTitleEl = document.getElementById("phase-banner-title");
   const phaseBannerSubEl = document.getElementById("phase-banner-sub");
@@ -59,10 +66,13 @@
   let deck = [];
   /** @type {{ id: number, name: string, slug: string } | null} */
   let current = null;
-  /** @type {"idle" | "placing" | "rearrange-intro" | "rearrange" | "reveal" | "done"} */
+  /** @type {"idle" | "placing" | "filling" | "rearrange-intro" | "rearrange" | "reveal" | "done"} */
   let phase = "idle";
+  /** @type {1 | 2} */
+  let gameMode = 1;
   let secondsLeft = START_SECONDS;
   let skipsLeft = MAX_SKIPS;
+  let replacesLeft = MAX_REPLACES;
   let selectedSlot = null;
   let timerId = null;
   let bannerTimerId = null;
@@ -100,11 +110,42 @@
   function updateTimerDisplay() {
     timerValueEl.textContent = formatTime(secondsLeft);
     const low =
-      (phase === "placing" || phase === "rearrange") && secondsLeft <= 10;
+      ((phase === "placing" && gameMode === 1) || phase === "rearrange") &&
+      secondsLeft <= 10;
     timerEl.classList.toggle("timer--low", low);
   }
 
   function updateSkipsDisplay() {
+    if (gameMode === 2) {
+      skipsLabelEl.textContent = "Replace";
+      skipsValueEl.textContent = String(replacesLeft);
+      const canReplace =
+        phase === "rearrange" && replacesLeft > 0 && selectedSlot !== null;
+      skipsEl.classList.toggle("skips--action", phase === "rearrange");
+      skipsEl.classList.toggle(
+        "skips--disabled",
+        phase !== "rearrange" || !canReplace
+      );
+      skipsEl.disabled = phase !== "rearrange" || !canReplace;
+      if (phase === "rearrange") {
+        skipsEl.setAttribute(
+          "aria-label",
+          canReplace
+            ? `Replace selected Pokémon, ${replacesLeft} replaces left`
+            : replacesLeft <= 0
+              ? "No replaces left"
+              : "Select a Pokémon to replace"
+        );
+      } else {
+        skipsEl.setAttribute(
+          "aria-label",
+          `Replaces remaining: ${replacesLeft}`
+        );
+      }
+      return;
+    }
+
+    skipsLabelEl.textContent = "Skips";
     skipsValueEl.textContent = String(skipsLeft);
     const canSkip = phase === "placing" && skipsLeft > 0 && Boolean(current);
     skipsEl.classList.toggle("skips--action", phase === "placing");
@@ -123,11 +164,20 @@
   }
 
   function placingHint() {
+    if (gameMode === 2) return;
     if (skipsLeft <= 0) {
       setStatus("No skips left — place this Pokémon on the ladder.");
       return;
     }
     setStatus("Place on an empty slot, or tap Skips to skip.");
+  }
+
+  function mode2Hint() {
+    if (replacesLeft <= 0) {
+      setStatus("Reorder your stack, then Lock In for a time bonus.");
+      return;
+    }
+    setStatus("Reorder or Replace, then Lock In early for a time bonus.");
   }
 
   function flashTimer(kind) {
@@ -192,8 +242,49 @@
   }
 
   function onSkipsPillClick() {
+    if (gameMode === 2) {
+      onReplace();
+      return;
+    }
     if (phase === "placing") {
       onSkip();
+    }
+  }
+
+  function onReplace() {
+    if (gameMode !== 2 || phase !== "rearrange") return;
+    if (selectedSlot === null) {
+      setStatus("Select a Pokémon to replace.", "bad");
+      return;
+    }
+    if (replacesLeft <= 0) {
+      setStatus("No replaces left.", "bad");
+      return;
+    }
+    if (deck.length === 0) {
+      setStatus("No more Pokémon left to draw.", "bad");
+      return;
+    }
+
+    const index = selectedSlot;
+    const slot = slots[index];
+    if (!slot?.pokemon) return;
+
+    const oldName = slot.pokemon.name;
+    const next = deck.pop();
+    slot.pokemon = next;
+    slot.shiny = rollShiny();
+    slot.spriteRevealed = false;
+    replacesLeft -= 1;
+    selectedSlot = null;
+    renderSlot(index, { animate: true });
+    updateSkipsDisplay();
+    flashTimer("good");
+    setStatus(`Replaced ${oldName} with ${next.name}.`, "good");
+    if (replacesLeft <= 0) {
+      window.setTimeout(() => {
+        if (phase === "rearrange") mode2Hint();
+      }, 900);
     }
   }
 
@@ -585,23 +676,64 @@
   }
 
   function showControlsForPhase() {
+    const isMode2Board =
+      gameMode === 2 && (phase === "filling" || phase === "rearrange");
     const showPlayHud =
-      phase === "placing" ||
-      phase === "rearrange-intro" ||
-      phase === "rearrange";
-    const showCard = phase === "placing";
+      (gameMode === 1 &&
+        (phase === "placing" ||
+          phase === "rearrange-intro" ||
+          phase === "rearrange")) ||
+      isMode2Board;
+    const showCard = gameMode === 1 && phase === "placing";
+    // Keep Lock In in-layout during Mode 2 fill so the ladder doesn't jump.
+    const showLock =
+      phase === "rearrange" || (gameMode === 2 && phase === "filling");
     const hideCard = !showCard;
 
     preGameControls.hidden = phase !== "idle";
-    rearrangeControls.hidden = phase !== "rearrange";
+    rearrangeControls.hidden = !showLock;
     postGameControls.hidden = phase !== "done";
+    lockBtn.disabled = phase !== "rearrange";
 
     timerWrapEl.hidden = !showPlayHud;
-    skipsEl.hidden = !showPlayHud;
+    skipsEl.hidden = !(
+      (gameMode === 1 &&
+        (phase === "placing" ||
+          phase === "rearrange-intro" ||
+          phase === "rearrange")) ||
+      isMode2Board
+    );
     drawAreaEl.classList.toggle("draw-area--play", showPlayHud);
 
     currentCardEl.hidden = hideCard;
     currentCardEl.classList.toggle("card--hidden", hideCard);
+
+    updateModeToggle();
+    updateSkipsDisplay();
+  }
+
+  function updateModeToggle() {
+    const isMode2 = gameMode === 2;
+    const canChange = phase === "idle";
+    modeSwitchEl.setAttribute("aria-checked", isMode2 ? "true" : "false");
+    modeSwitchEl.setAttribute("aria-disabled", canChange ? "false" : "true");
+    modeLabel1El.classList.toggle("is-active", !isMode2);
+    modeLabel2El.classList.toggle("is-active", isMode2);
+    modeSwitchEl.disabled = !canChange;
+    modeToggleEl.classList.toggle("is-disabled", !canChange);
+    modeToggleEl.setAttribute("aria-disabled", canChange ? "false" : "true");
+  }
+
+  function setGameMode(mode) {
+    if (phase !== "idle") return;
+    gameMode = mode === 2 ? 2 : 1;
+    updateModeToggle();
+    updateSkipsDisplay();
+  }
+
+  function toggleGameMode() {
+    if (phase !== "idle" || modeSwitchEl.disabled) return;
+    setGameMode(gameMode === 1 ? 2 : 1);
   }
 
   function onSlotClick(index) {
@@ -666,14 +798,25 @@
     if (selectedSlot === null) {
       selectedSlot = index;
       renderSlot(index);
-      setStatus(`Selected ${slot.pokemon.name}. Tap another to swap.`);
+      if (gameMode === 2) {
+        updateSkipsDisplay();
+        setStatus(
+          replacesLeft > 0
+            ? `Selected ${slot.pokemon.name}. Tap Replace, or tap another to swap.`
+            : `Selected ${slot.pokemon.name}. Tap another to swap.`
+        );
+      } else {
+        setStatus(`Selected ${slot.pokemon.name}. Tap another to swap.`);
+      }
       return;
     }
 
     if (selectedSlot === index) {
       selectedSlot = null;
       renderSlot(index);
-      setStatus("Drag to reorder, or tap two to swap.");
+      updateSkipsDisplay();
+      if (gameMode === 2) mode2Hint();
+      else setStatus("Drag to reorder, or tap two to swap.");
       return;
     }
 
@@ -687,6 +830,7 @@
     selectedSlot = null;
     renderSlot(other, { animate: true });
     renderSlot(index, { animate: true });
+    updateSkipsDisplay();
     setStatus("Swapped.", "good");
   }
 
@@ -705,7 +849,7 @@
     showControlsForPhase();
     setStatus("");
 
-    showPhaseBanner("Final 15 seconds", "Rearrange your stack");
+    showPhaseBanner(`Final ${REARRANGE_SECONDS} seconds`, "Rearrange your stack");
 
     bannerTimerId = window.setTimeout(() => {
       bannerTimerId = null;
@@ -809,7 +953,8 @@
     const perfect = correct === SLOT_COUNT && placedCount() === SLOT_COUNT;
     const streakLength = longestCorrectStreak(correctFlags);
     const streakPercent = streakBonusPercent(streakLength, perfect);
-    const timeBonus = Math.floor(placementTimeLeft);
+    const timeBonus =
+      correct >= 1 ? Math.floor(placementTimeLeft) : 0;
     const afterTime = slotTotal + timeBonus;
     const streakBonus = Math.round((afterTime * streakPercent) / 100);
     const score = afterTime + streakBonus;
@@ -834,6 +979,9 @@
 
   async function lockIn() {
     if (phase !== "rearrange") return;
+    if (gameMode === 2) {
+      placementTimeLeft = Math.floor(Math.max(0, secondsLeft));
+    }
     phase = "reveal";
     selectedSlot = null;
     clearDragVisuals();
@@ -1077,6 +1225,7 @@
     current = null;
     secondsLeft = START_SECONDS;
     skipsLeft = MAX_SKIPS;
+    replacesLeft = MAX_REPLACES;
     lastScore = null;
     lastResult = null;
     placementTimeLeft = 0;
@@ -1098,11 +1247,61 @@
     setStatus(allPokemon.length ? "" : "Pokémon data failed to load.", "bad");
   }
 
+  async function startMode2(runToken) {
+    phase = "filling";
+    replacesLeft = MAX_REPLACES;
+    secondsLeft = START_SECONDS;
+    selectedSlot = null;
+    current = null;
+    updateTimerDisplay();
+    updateCurrentCard();
+    setSlotsInteractive(false);
+    showControlsForPhase();
+    setStatus("Filling the ladder…");
+
+    const picks = [];
+    for (let i = 0; i < SLOT_COUNT; i += 1) {
+      if (deck.length === 0) break;
+      picks.push(deck.pop());
+    }
+
+    // Fill bottom → top so names slide in toward the high end.
+    for (let step = 0; step < picks.length; step += 1) {
+      if (runToken !== startToken || phase !== "filling") return;
+      const index = SLOT_COUNT - 1 - step;
+      const pokemon = picks[step];
+      slots[index].pokemon = pokemon;
+      slots[index].shiny = rollShiny();
+      slots[index].spriteRevealed = false;
+      renderSlot(index, { animate: true });
+      await wait(MODE2_FILL_STAGGER_MS);
+    }
+
+    if (runToken !== startToken || phase !== "filling") return;
+
+    phase = "rearrange";
+    selectedSlot = null;
+    setSlotsInteractive(true);
+    showControlsForPhase();
+    mode2Hint();
+    startTimer(() => lockIn());
+  }
+
   async function startGame() {
     if (allPokemon.length === 0) return;
     resetBoard();
     const runToken = ++startToken;
+
+    // Lock mode as soon as a round begins (re-enabled only on idle / New Game).
+    if (gameMode === 2) {
+      phase = "filling";
+      updateModeToggle();
+      await startMode2(runToken);
+      return;
+    }
+
     phase = "placing";
+    updateModeToggle();
     showControlsForPhase();
     setSlotsInteractive(false);
     current = null;
@@ -1131,7 +1330,10 @@
     helpOverlayEl.hidden = true;
     if (helpPaused && (phase === "placing" || phase === "rearrange")) {
       helpPaused = false;
-      const onExpire = phase === "placing" ? () => endIncomplete() : () => lockIn();
+      const onExpire =
+        phase === "placing" && gameMode === 1
+          ? () => endIncomplete()
+          : () => lockIn();
       startTimer(onExpire);
     }
   }
@@ -1149,6 +1351,7 @@
   helpCloseBtn.addEventListener("click", closeHelp);
   skipsEl.addEventListener("click", onSkipsPillClick);
   timerEl.addEventListener("click", onTimerPillClick);
+  modeSwitchEl.addEventListener("click", toggleGameMode);
 
   resetBoard();
 })();

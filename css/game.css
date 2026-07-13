@@ -243,11 +243,6 @@ button,
   -webkit-touch-callout: none;
 }
 
-.slot-row:not(.slot-row--rearrange) {
-  grid-template-columns: 0 minmax(0, 1fr) 0;
-  column-gap: 0;
-}
-
 .slot {
   position: relative;
   width: 100%;
@@ -729,6 +724,72 @@ button,
   line-height: 1;
 }
 
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0.15rem 0 0.1rem;
+}
+
+.mode-toggle__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  opacity: 0.55;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.mode-toggle__label.is-active {
+  color: var(--ink);
+  opacity: 1;
+}
+
+.mode-switch {
+  appearance: none;
+  position: relative;
+  width: 2.35rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.85);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mode-switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mode-switch__thumb {
+  position: absolute;
+  top: 0.12rem;
+  left: 0.12rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: transform 0.18s ease;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.mode-switch[aria-checked="true"] .mode-switch__thumb {
+  transform: translateX(1.05rem);
+}
+
+.mode-toggle.is-disabled {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.mode-toggle.is-disabled .mode-toggle__label {
+  opacity: 0.4;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -831,6 +892,15 @@ button,
   color: var(--ink-soft);
   font-size: 0.92rem;
   line-height: 1.45;
+}
+
+.help-rules__heading {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
 }
 
 .help-rules p {
@@ -1268,11 +1338,6 @@ button,
   .slot-row {
     grid-template-columns: 1.85rem minmax(0, 1fr) 1.85rem;
     column-gap: 0.35rem;
-  }
-
-  .slot-row:not(.slot-row--rearrange) {
-    grid-template-columns: 0 minmax(0, 1fr) 0;
-    column-gap: 0;
   }
 
   .slot-shift {
